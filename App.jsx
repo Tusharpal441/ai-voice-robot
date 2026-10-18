@@ -14,7 +14,7 @@ function App() {
   const audioPlayerRef = useRef(null);
 
   // During local development, use localhost. When deployed to Render, change to your Render URL:
-  const API_URL = "http://127.0.0.1:8000/chat-voice";
+  const API_URL = "https://ai-voice-robot.onrender.com/";
 
   async function startRecording() {
     try {
