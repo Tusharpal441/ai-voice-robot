@@ -13,8 +13,8 @@ function App() {
   const audioChunksRef = useRef([]);
   const audioPlayerRef = useRef(null);
 
-  // During local development, use localhost. When deployed to Render, change to your Render URL:
-  const API_URL = "http://127.0.0.1:8000/chat-voice";
+  // YOUR LIVE RENDER BACKEND:
+  const API_URL = "https://ai-voice-robot.onrender.com/chat-voice";
 
   async function startRecording() {
     try {
@@ -23,7 +23,16 @@ function App() {
       audioChunksRef.current = [];
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+
+      // Automatically support both Android (webm) and iPhone (mp4)
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : "";
+
+      const options = mimeType ? { mimeType } : {};
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -34,8 +43,9 @@ function App() {
 
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        await sendAudioToBackend(audioBlob);
+        const actualType = mediaRecorder.mimeType || "audio/webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualType });
+        await sendAudioToBackend(audioBlob, actualType);
       };
 
       mediaRecorder.start();
@@ -55,10 +65,11 @@ function App() {
     }
   }
 
-  async function sendAudioToBackend(audioBlob) {
+  async function sendAudioToBackend(audioBlob, mimeType) {
     try {
+      const ext = mimeType.includes("mp4") ? "mp4" : "webm";
       const formData = new FormData();
-      formData.append("file", audioBlob, "recording.webm");
+      formData.append("file", audioBlob, `recording.${ext}`);
 
       const response = await fetch(API_URL, {
         method: "POST",
